@@ -273,7 +273,7 @@ public:
 protected:
     const std::vector<std::pair<std::uint32_t, std::uint32_t>>
 											   &mColorReplacements;
-    std::unordered_map<std::string, std::shared_ptr<VInterpolator>>
+    std::unordered_map<std::string, VInterpolator*>
                                                mInterpolatorCache;
     std::shared_ptr<LOTCompositionData>        mComposition;
     LOTCompositionData *                       compRef{nullptr};
