@@ -1,19 +1,23 @@
-/* 
- * Copyright (c) 2018 Samsung Electronics Co., Ltd. All rights reserved.
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+/*
+ * Copyright (c) 2020 Samsung Electronics Co., Ltd. All rights reserved.
+
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 #include "evasapp.h"
@@ -21,8 +25,10 @@
 #include<iostream>
 #include <dirent.h>
 #include <stdio.h>
+#include <chrono>
 using namespace std;
 
+static Eina_Bool onTestDone(void *data);
 /*
  * To check the frame rate with rendermode off run
  * ECORE_EVAS_FPS_DEBUG=1 ./lottieviewTest --disable-render
@@ -35,9 +41,16 @@ using namespace std;
 class LottieViewTest
 {
 public:
-  LottieViewTest(EvasApp *app, Strategy st) {
+  LottieViewTest(EvasApp *app, Strategy st, double timeout) {
+      mStartTime = std::chrono::high_resolution_clock::now();
       mStrategy = st;
       mApp = app;
+
+      if (timeout > 0) {
+        ecore_timer_add(timeout, onTestDone, mApp);
+      }
+      // work around for 60fps
+      ecore_animator_frametime_set(1.0f/120.0f);
   }
 
   void show(int numberOfImage) {
@@ -72,10 +85,30 @@ public:
     }
   }
 
+    ~LottieViewTest() {
+      const auto frames = mViews.empty() ? 0 : mViews[0]->renderCount();
+      const double secs = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - mStartTime).count();
+      std::cout<<"\tTestTime : "<< secs<<" sec \n\tTotalFrames : "<<frames<<"\n\tFramesPerSecond : "<< frames / secs <<" fps\n";
+    }
+
+  static int help() {
+            printf("Usage ./lottieviewTest [-s] [strategy] [-t] [timeout] [-c] [count]\n");
+            printf("\n \t-t : timeout duration in seconds\n");
+            printf("\n \t-c : number of resource in the grid\n");
+            printf("\n \t-s : Rendering Strategy\n");
+            printf("\t\t 0  - Test Lottie SYNC Renderer with CPP API\n");
+            printf("\t\t 1  - Test Lottie ASYNC Renderer with CPP API\n");
+            printf("\t\t 2  - Test Lottie SYNC Renderer with C API\n");
+            printf("\t\t 3  - Test Lottie ASYNC Renderer with C API\n");
+            printf("\t\t 4  - Test Lottie Tree Api using Efl VG Render\n");
+            printf(" Default : ./lottieviewTest -s 1 \n");
+            return 0;
+  }
 public:
   EvasApp     *mApp;
   Strategy     mStrategy;
   std::vector<std::unique_ptr<LottieView>>   mViews;
+  std::chrono::high_resolution_clock::time_point  mStartTime;
 };
 
 static void
@@ -85,34 +118,44 @@ onExitCb(void *data, void */*extra*/)
     delete view;
 }
 
+
+static Eina_Bool
+onTestDone(void *data)
+{
+    EvasApp *app = (EvasApp *)data;
+    app->exit();
+    return ECORE_CALLBACK_CANCEL;
+}
+
 int
 main(int argc, char **argv)
 {
-    if (argc > 1) {
-        if (!strcmp(argv[1],"--help") || !strcmp(argv[1],"-h")) {
-            printf("Usage ./lottieviewTest 1 \n");
-            printf("\t 0  - Test Lottie SYNC Renderer with CPP API\n");
-            printf("\t 1  - Test Lottie ASYNC Renderer with CPP API\n");
-            printf("\t 2  - Test Lottie SYNC Renderer with C API\n");
-            printf("\t 3  - Test Lottie ASYNC Renderer with C API\n");
-            printf("\t 4  - Test Lottie Tree Api using Efl VG Render\n");
-            printf("\t Default is ./lottieviewTest 1 \n");
-            return 0;
-        }
-    } else {
-        printf("Run ./lottieviewTest -h  for more option\n");
+    Strategy st = Strategy::renderCppAsync;
+    auto index = 0;
+    double timeOut = 0;
+    size_t itemCount = 250;
+    while (index < argc) {
+      const char* option = argv[index];
+      index++;
+      if (!strcmp(option,"--help") || !strcmp(option,"-h")) {
+          return LottieViewTest::help();
+      } else if (!strcmp(option,"-s")) {
+         st = (index < argc) ? static_cast<Strategy>(atoi(argv[index])) : Strategy::renderCppAsync;
+         index++;
+      } else if (!strcmp(option,"-t")) {
+         timeOut = (index < argc) ? atoi(argv[index]) : 10;
+         index++;
+      } else if (!strcmp(option,"-c")) {
+         itemCount = (index < argc) ? atoi(argv[index]) : 10;
+         index++;
+      }
     }
 
    EvasApp *app = new EvasApp(800, 800);
    app->setup();
 
-   Strategy st = Strategy::renderCppAsync;
-   if (argc > 1) {
-       int option = atoi(argv[1]);
-       st = static_cast<Strategy>(option);
-   }
-   LottieViewTest *view = new LottieViewTest(app, st);
-   view->show(250);
+   LottieViewTest *view = new LottieViewTest(app, st, timeOut);
+   view->show(itemCount);
 
    app->addExitCb(onExitCb, view);
 

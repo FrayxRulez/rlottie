@@ -1,19 +1,23 @@
-/* 
- * Copyright (c) 2018 Samsung Electronics Co., Ltd. All rights reserved.
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+/*
+ * Copyright (c) 2020 Samsung Electronics Co., Ltd. All rights reserved.
+
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 #ifndef _RLOTTIE_H_
@@ -24,16 +28,16 @@
 #include <memory>
 
 #if defined _WIN32 || defined __CYGWIN__
-  #ifdef LOT_BUILD
-    #define LOT_EXPORT __declspec(dllexport)
+  #ifdef RLOTTIE_BUILD
+    #define RLOTTIE_API __declspec(dllexport)
   #else
-    #define LOT_EXPORT __declspec(dllimport)
+    #define RLOTTIE_API __declspec(dllimport)
   #endif
 #else
-  #ifdef LOT_BUILD
-      #define LOT_EXPORT __attribute__ ((visibility ("default")))
+  #ifdef RLOTTIE_BUILD
+      #define RLOTTIE_API __attribute__ ((visibility ("default")))
   #else
-      #define LOT_EXPORT
+      #define RLOTTIE_API
   #endif
 #endif
 
@@ -58,7 +62,7 @@ namespace rlottie {
  *
  *  @internal
  */
-LOT_EXPORT void configureModelCacheSize(size_t cacheSize);
+RLOTTIE_API void configureModelCacheSize(size_t cacheSize);
 
 struct Color {
     Color() = default;
@@ -104,11 +108,11 @@ enum class Property {
     FillOpacity,   /*!< Opacity property of Fill object , value type is float [ 0 .. 100] */
     StrokeColor,   /*!< Color property of Stroke object , value type is rlottie::Color */
     StrokeOpacity, /*!< Opacity property of Stroke object , value type is float [ 0 .. 100] */
-    StrokeWidth,   /*!< stroke with property of Stroke object , value type is float */
+    StrokeWidth,   /*!< stroke width property of Stroke object , value type is float */
     TrAnchor,      /*!< Transform Anchor property of Layer and Group object , value type is rlottie::Point */
     TrPosition,    /*!< Transform Position property of Layer and Group object , value type is rlottie::Point */
     TrScale,       /*!< Transform Scale property of Layer and Group object , value type is rlottie::Size. range[0 ..100] */
-    TrRotation,    /*!< Transform Scale property of Layer and Group object , value type is float. range[0 .. 360] in degrees*/
+    TrRotation,    /*!< Transform Rotation property of Layer and Group object , value type is float. range[0 .. 360] in degrees*/
     TrOpacity      /*!< Transform Opacity property of Layer and Group object , value type is float [ 0 .. 100] */
 };
 
@@ -118,7 +122,7 @@ struct Size_Type{};
 struct Float_Type{};
 template <typename T> struct MapType;
 
-class LOT_EXPORT Surface {
+class RLOTTIE_API Surface {
 public:
     /**
      *  @brief Surface object constructor.
@@ -261,7 +265,10 @@ using MarkerList = std::vector<std::tuple<std::string, int , int>>;
 
 using LayerInfoList = std::vector<std::tuple<std::string, int , int>>;
 
-class LOT_EXPORT Animation {
+
+using ColorFilter = std::function<void(float &r , float &g, float &b)>;
+
+class RLOTTIE_API Animation {
 public:
 
     /**
@@ -302,6 +309,23 @@ public:
                  const std::string &resourcePath="", bool cachePolicy=true,
 	             const std::vector<std::pair<std::uint32_t, std::uint32_t>>
 				     &colorReplacements = {});
+
+    /**
+     *  @brief Constructs an animation object from JSON string data and update.
+     *  the color properties using ColorFilter.
+
+     *  @param[in] jsonData The JSON string data.
+     *  @param[in] resourcePath the path will be used to search for external resource.
+     *  @param[in] filter The color filter that will be applied for each color property
+     *             found during parsing.
+
+     *  @return Animation object that can render the contents of the
+     *          Lottie resource represented by JSON string data.
+     *
+     *  @internal
+     */
+    static std::unique_ptr<Animation>
+    loadFromData(std::string jsonData, std::string resourcePath, ColorFilter filter);
 
     /**
      *  @brief Returns default framerate of the Lottie resource.

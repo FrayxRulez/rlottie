@@ -1,8 +1,10 @@
 project('rlottie',
         'cpp',
-        default_options : ['warning_level=3', 'werror=true', 'cpp_std=c++14', 'optimization=s'],
-        version : '0.0.1',
-        license : 'Apache')
+        default_options : ['cpp_std=c++14', 'optimization=s'],
+        version : '0.2',
+        license : 'MIT',
+        meson_version : '>=0.49',
+        )
 
 add_project_arguments('-DDEMO_DIR="@0@/example/resource/"'.format(meson.current_source_dir()), language : 'cpp')
 

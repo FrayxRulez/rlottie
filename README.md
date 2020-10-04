@@ -3,19 +3,25 @@
 
 [![Build Status](https://travis-ci.org/Samsung/rlottie.svg?branch=master)](https://travis-ci.org/Samsung/rlottie)
 [![Build status](https://ci.appveyor.com/api/projects/status/n3xonxk1ooo6s7nr?svg=true&passingText=windows%20-%20passing)](https://ci.appveyor.com/project/smohantty/rlottie-mliua)
+[![Gitter](https://badges.gitter.im/rLottie-dev/community.svg)](https://gitter.im/rLottie-dev/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
+<p align="center">
+  <img width="240" height="240" src="https://github.com/Samsung/rlottie/blob/master/.Gifs/logo.png">
+</p>
 
 rlottie is a platform independent standalone c++ library for rendering vector based animations and art in realtime.
 
 Lottie loads and renders animations and vectors exported in the bodymovin JSON format. Bodymovin JSON can be created and exported from After Effects with [bodymovin](https://github.com/bodymovin/bodymovin), Sketch with [Lottie Sketch Export](https://github.com/buba447/Lottie-Sketch-Export), and from [Haiku](https://www.haiku.ai).
 
-For the first time, designers can create and ship beautiful animations without an engineer painstakingly recreating it by hand. Since the animation is backed by JSON they are extremely small in size but can be large in complexity! 
+For the first time, designers can create and ship beautiful animations without an engineer painstakingly recreating it by hand. Since the animation is backed by JSON they are extremely small in size but can be large in complexity!
 
 Here are small samples of the power of Lottie.
 
-![Example1](.Gifs/1.gif)
-![Example2](.Gifs/2.gif)
-![Example2](https://github.com/airbnb/lottie-ios/blob/master/_Gifs/Examples1.gif)
+<p align="center">
+  <img src="https://github.com/Samsung/rlottie/blob/master/.Gifs/1.gif">
+  <img src="https://github.com/Samsung/rlottie/blob/master/.Gifs/2.gif">
+  <img src="https://github.com/airbnb/lottie-ios/blob/master/_Gifs/Examples1.gif">
+</p>
 
 ## Contents
 - [Building Lottie](#building-lottie)
@@ -30,7 +36,7 @@ Here are small samples of the power of Lottie.
 - [Issues or Feature Requests?](#issues-or-feature-requests)
 
 ## Building Lottie
-rottie supports [meson](https://mesonbuild.com/) and [cmake](https://cmake.org/) build system. rottie is written in `C++14`. and has a public header dependancy of `C++11`
+rlottie supports [meson](https://mesonbuild.com/) and [cmake](https://cmake.org/) build system. rlottie is written in `C++14`. and has a public header dependency of `C++11`
 
 ### Meson Build
 install [meson](http://mesonbuild.com/Getting-meson.html) and [ninja](https://ninja-build.org/) if not already installed.
@@ -48,19 +54,20 @@ ninja -C build
 
 Install [cmake](https://cmake.org/download/) if not already installed
 
-Create a build directory for out of source build
+Create a build directory for out of source `build`
 ```
 mkdir build
 ```
-Run cmake command inside build directory to configure rlottie.
+Run cmake command inside `build` directory to configure rlottie.
 ```
 cd build
 cmake ..
 
 # install in a different path. eg ~/test/usr/lib
-
 cmake -DCMAKE_INSTALL_PREFIX=~/test ..
 
+# static build
+cmake -DBUILD_SHARED_LIBS=OFF ..
 ```
 Run make to build rlottie
 
@@ -92,11 +99,11 @@ ninja test
 
 #
 ## Demo
-If you want to see rlottie librray in action without building it please visit [rlottie online viewer](http://rlottie.com)
+If you want to see rlottie library in action without building it please visit [rlottie online viewer](http://rlottie.com)
 
 While building rlottie library it generates a simple lottie to GIF converter which can be used to convert lottie json file to GIF file.
 
-Run Demo 
+Run Demo
 ```
 lottie2gif [lottie file name]
 ```
@@ -110,34 +117,32 @@ Please visit [rlottie online viewer](http://rlottie.com)
 #
 ## Quick Start
 
-Lottie loads and renders animations and vectors exported in the bodymovin JSON format. Bodymovin JSON can be created and exported from After Effects with [bodymovin](https://github.com/bodymovin/bodymovin), Sketch with [Lottie Sketch Export](https://github.com/buba447/Lottie-Sketch-Export), and from [Haiku](https://www.haiku.ai). 
- 
+Lottie loads and renders animations and vectors exported in the bodymovin JSON format. Bodymovin JSON can be created and exported from After Effects with [bodymovin](https://github.com/bodymovin/bodymovin), Sketch with [Lottie Sketch Export](https://github.com/buba447/Lottie-Sketch-Export), and from [Haiku](https://www.haiku.ai).
+
 You can quickly load a Lottie animation with:
 ```cpp
-std::unique_ptr<rlottie::Animation> animation = 
-					rlottie::loadFromFile(std::string("absolute_path/test.json"));
+auto animation = rlottie::Animation::loadFromFile("absolute_path/test.json");
 ```
 You can load a lottie animation from raw data with:
 ```cpp
-std::unique_ptr<rlottie::Animation> animation = rlottie::loadFromData(std::string(rawData),
-                                                                      std::string(cacheKey));
+auto animation = rlottie::Animation::loadFromData(std::string(rawData), std::string(cacheKey));
 ```
 
 Properties like `frameRate` , `totalFrame` , `duration` can be queried with:
 ```cpp
-# get the frame rate of the resource. 
+# get the frame rate of the resource.
 double frameRate = animation->frameRate();
 
 #get total frame that exists in the resource
 size_t totalFrame = animation->totalFrame();
 
-#get total animation duration in sec for the resource 
+#get total animation duration in sec for the resource
 double duration = animation->duration();
 ```
 Render a particular frame in a surface buffer `immediately` with:
 ```cpp
 rlottie::Surface surface(buffer, width , height , stride);
-animation->renderSync(frameNo, surface); 
+animation->renderSync(frameNo, surface);
 ```
 Render a particular frame in a surface buffer `asyncronousely` with:
 ```cpp
@@ -162,7 +167,7 @@ You can update properties dynamically at runtime. This can be used for a variety
 
 ### Understanding After Effects
 
-To understand how to change animation properties in Lottie, you should first understand how animation properties are stored in Lottie. Animation properties are stored in a data tree that mimics the information heirarchy of After Effects. In After Effects a Composition is a collection of Layers that each have their own timelines. Layer objects have string names, and their contents can be an image, shape layers, fills, strokes, or just about anything that is drawable. Each object in After Effects has a name. Lottie can find these objects and properties by their name using a KeyPath.
+To understand how to change animation properties in Lottie, you should first understand how animation properties are stored in Lottie. Animation properties are stored in a data tree that mimics the information hierarchy of After Effects. In After Effects a Composition is a collection of Layers that each have their own timelines. Layer objects have string names, and their contents can be an image, shape layers, fills, strokes, or just about anything that is drawable. Each object in After Effects has a name. Lottie can find these objects and properties by their name using a KeyPath.
 
 ### Usage
 
@@ -235,14 +240,14 @@ animation->setValue<rlottie::Property::FillColor>("Layer1.Box 1.Fill1",
 | Fill  | 👍 |
 | Stroke | 👍 |
 | Radial Gradient | 👍 |
-| Linear Gradient | 👍 | 
-| Gradient Stroke | 👍 | 
+| Linear Gradient | 👍 |
+| Gradient Stroke | 👍 |
 | **Transforms** | **Supported** |
 | Position | 👍 |
 | Position (separated X/Y) | 👍 |
 | Scale | 👍 |
 | Skew | ⛔️ |
-| Rotation | 👍 | 
+| Rotation | 👍 |
 | Anchor Point | 👍 |
 | Opacity | 👍 |
 | Parenting | 👍 |
@@ -282,13 +287,13 @@ animation->setValue<rlottie::Property::FillColor>("Layer1.Box 1.Fill1",
 | Tritone | ⛔️ |
 | Levels Individual Controls | ⛔️ |
 | **Text** | **Supported** |
-| Glyphs |  ⛔️ | 
+| Glyphs |  ⛔️ |
 | Fonts | ⛔️ |
 | Transform | ⛔️ |
-| Fill | ⛔️ | 
-| Stroke | ⛔️ | 
-| Tracking | ⛔️ | 
-| Anchor point grouping | ⛔️ | 
+| Fill | ⛔️ |
+| Stroke | ⛔️ |
+| Tracking | ⛔️ |
+| Anchor point grouping | ⛔️ |
 | Text Path | ⛔️ |
 | Per-character 3D | ⛔️ |
 | Range selector (Units) | ⛔️ |

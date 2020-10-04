@@ -1,40 +1,46 @@
 /*
- * Copyright (c) 2018 Samsung Electronics Co., Ltd. All rights reserved.
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
- */
+ * Copyright (c) 2020 Samsung Electronics Co., Ltd. All rights reserved.
 
-#include "lottieloader.h"
-#include "lottieparser.h"
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 
 #include <cstring>
 #include <fstream>
+#include <sstream>
+
+#include "lottiemodel.h"
+
+using namespace rlottie::internal;
 
 #ifdef LOTTIE_CACHE_SUPPORT
 
-#include <unordered_map>
 #include <mutex>
+#include <unordered_map>
 
-class LottieModelCache {
+class ModelCache {
 public:
-    static LottieModelCache &instance()
+    static ModelCache &instance()
     {
-        static LottieModelCache CACHE;
-        return CACHE;
+        static ModelCache singleton;
+        return singleton;
     }
-    std::shared_ptr<LOTModel> find(const std::string &key)
+    std::shared_ptr<model::Composition> find(const std::string &key)
     {
         std::lock_guard<std::mutex> guard(mMutex);
 
@@ -43,9 +49,8 @@ public:
         auto search = mHash.find(key);
 
         return (search != mHash.end()) ? search->second : nullptr;
-
     }
-    void add(const std::string &key, std::shared_ptr<LOTModel> value)
+    void add(const std::string &key, std::shared_ptr<model::Composition> value)
     {
         std::lock_guard<std::mutex> guard(mMutex);
 
@@ -67,33 +72,31 @@ public:
     }
 
 private:
-    LottieModelCache() = default;
+    ModelCache() = default;
 
-    std::unordered_map<std::string, std::shared_ptr<LOTModel>>  mHash;
-    std::mutex                                                  mMutex;
-    size_t                                                      mcacheSize{10};
+    std::unordered_map<std::string, std::shared_ptr<model::Composition>> mHash;
+    std::mutex                                                           mMutex;
+    size_t mcacheSize{10};
 };
 
 #else
 
-class LottieModelCache {
+class ModelCache {
 public:
-    static LottieModelCache &instance()
+    static ModelCache &instance()
     {
-        static LottieModelCache CACHE;
-        return CACHE;
+        static ModelCache singleton;
+        return singleton;
     }
-    std::shared_ptr<LOTModel> find(const std::string &) { return nullptr; }
-    void add(const std::string &, std::shared_ptr<LOTModel>) {}
+    std::shared_ptr<model::Composition> find(const std::string &)
+    {
+        return nullptr;
+    }
+    void add(const std::string &, std::shared_ptr<model::Composition>) {}
     void configureCacheSize(size_t) {}
 };
 
 #endif
-
-void LottieLoader::configureModelCacheSize(size_t cacheSize)
-{
-    LottieModelCache::instance().configureCacheSize(cacheSize);
-}
 
 static std::string dirname(const std::string &path)
 {
@@ -101,15 +104,21 @@ static std::string dirname(const std::string &path)
 #ifdef _WIN32
     if (ptr) ptr = strrchr(ptr + 1, '\\');
 #endif
-    int         len = int(ptr + 1 - path.c_str());  // +1 to include '/'
+    int len = int(ptr + 1 - path.c_str());  // +1 to include '/'
     return std::string(path, 0, len);
 }
 
-bool LottieLoader::load(const std::string &path, bool cachePolicy)
+void model::configureModelCacheSize(size_t cacheSize)
+{
+    ModelCache::instance().configureCacheSize(cacheSize);
+}
+
+std::shared_ptr<model::Composition> model::loadFromFile(const std::string &path,
+                                                        bool cachePolicy)
 {
     if (cachePolicy) {
-        mModel = LottieModelCache::instance().find(path);
-        if (mModel) return true;
+        auto obj = ModelCache::instance().find(path);
+        if (obj) return obj;
     }
 
     std::ifstream f;
@@ -117,53 +126,44 @@ bool LottieLoader::load(const std::string &path, bool cachePolicy)
 
     if (!f.is_open()) {
         vCritical << "failed to open file = " << path.c_str();
-        return false;
+        return {};
     } else {
         std::string content;
 
-        std::getline(f, content, '\0') ;
+        std::getline(f, content, '\0');
         f.close();
 
-        if (content.empty()) return false;
+        if (content.empty()) return {};
 
-        const char *str = content.c_str();
-        LottieParser parser(const_cast<char *>(str),
-                            dirname(path).c_str());
-        mModel = parser.model();
+        auto obj = internal::model::parse(const_cast<char *>(content.c_str()),
+                                          dirname(path));
 
-        if (!mModel) return false;
+        if (obj && cachePolicy) ModelCache::instance().add(path, obj);
 
-        if (cachePolicy)
-            LottieModelCache::instance().add(path, mModel);
+        return obj;
     }
-
-    return true;
 }
 
-bool LottieLoader::loadFromData(
-    std::string &&jsonData, const std::string &key,
-    const std::string &resourcePath, bool cachePolicy,
-    const std::vector<std::pair<std::uint32_t, std::uint32_t>>
-        &colorReplacements)
+std::shared_ptr<model::Composition> model::loadFromData(
+    std::string jsonData, const std::string &key, std::string resourcePath,
+    bool cachePolicy)
 {
     if (cachePolicy) {
-        mModel = LottieModelCache::instance().find(key);
-        if (mModel) return true;
+        auto obj = ModelCache::instance().find(key);
+        if (obj) return obj;
     }
 
-    LottieParser parser(const_cast<char *>(jsonData.c_str()),
-                        resourcePath.c_str(), colorReplacements);
-    mModel = parser.model();
+    auto obj = internal::model::parse(const_cast<char *>(jsonData.c_str()),
+                                      std::move(resourcePath));
 
-    if (!mModel) return false;
+    if (obj && cachePolicy) ModelCache::instance().add(key, obj);
 
-    if (cachePolicy)
-        LottieModelCache::instance().add(key, mModel);
-
-    return true;
+    return obj;
 }
 
-std::shared_ptr<LOTModel> LottieLoader::model()
+std::shared_ptr<model::Composition> model::loadFromData(
+    std::string jsonData, std::string resourcePath, model::ColorFilter filter)
 {
-    return mModel;
+    return internal::model::parse(const_cast<char *>(jsonData.c_str()),
+                                  std::move(resourcePath), std::move(filter));
 }

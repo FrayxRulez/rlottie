@@ -13,6 +13,14 @@ executable('lottie2gif',
            override_options : override_default,
            link_with : rlottie_lib)
 
+if host_machine.system() != 'windows'
+    executable('perf',
+               'lottieperf.cpp',
+               include_directories : inc,
+               override_options : override_default,
+               link_with : rlottie_lib)
+endif
+
 demo_dep = dependency('elementary', required : false, disabler : true)
 
 executable('demo',
@@ -63,12 +71,4 @@ executable('lottieviewer',
            link_with : rlottie_lib,
            dependencies : demo_dep)
 
-if (meson.get_compiler('cpp').has_header('elementary-1/efl_ui_animation_view.h'))
-    executable('efl_animview',
-               'efl_animview.cpp',
-               include_directories : inc,
-               link_with : rlottie_lib,
-               override_options : override_default,
-               dependencies : demo_dep)
-endif
 

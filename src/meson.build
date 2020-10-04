@@ -1,4 +1,4 @@
-compiler_flags = ['-DLOT_BUILD']
+compiler_flags = ['-DRLOTTIE_BUILD']
 
 cc = meson.get_compiler('cpp')
 if (cc.get_id() != 'msvc')
@@ -16,7 +16,11 @@ subdir('vector')
 subdir('lottie')
 subdir('binding')
 
-rlottie_lib_dep  = [ vector_dep, lottie_dep, binding_dep, dependency('threads')]
+rlottie_lib_dep  = [ vector_dep, lottie_dep, binding_dep]
+
+if get_option('thread') == true
+    rlottie_lib_dep  += dependency('threads')
+endif
 
 rlottie_lib = library('rlottie',
                       include_directories   : inc,
@@ -32,6 +36,16 @@ rlottie_lib = library('rlottie',
 rlottie_dep = declare_dependency(
                                  include_directories: inc,
                                  link_with : rlottie_lib)
+
+if (cc.get_id() == 'emscripten')
+
+  subdir('wasm')
+
+  executable('rlottie-wasm',
+              [],
+              dependencies : [rlottie_dep, rlottie_wasm_dep],
+            )
+endif
 
 pkg_mod = import('pkgconfig')
 

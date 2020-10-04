@@ -1,7 +1,7 @@
 cmake_minimum_required( VERSION 3.3 )
 
 #declare project
-project( rlottie VERSION 0.0.1 LANGUAGES C CXX ASM)
+project( rlottie VERSION 0.2 LANGUAGES C CXX ASM)
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE MinSizeRel)
@@ -14,13 +14,12 @@ endif()
 
 #declare target
 add_library( rlottie )
-set_target_properties( rlottie PROPERTIES DEFINE_SYMBOL LOT_BUILD )
+set_target_properties( rlottie PROPERTIES DEFINE_SYMBOL RLOTTIE_BUILD )
 
 #declare version of the target
 set(player_version_major 0)
-set(player_version_minor 0)
-set(player_version_patch 1)
-set(player_version ${player_version_major}.${player_version_minor}.${player_version_patch} )
+set(player_version_minor 2)
+set(player_version ${player_version_major}.${player_version_minor})
 set_target_properties(rlottie PROPERTIES
                         VERSION    ${player_version}
                         SOVERSION  ${player_version_major}
@@ -46,7 +45,7 @@ target_include_directories(rlottie
         "${CMAKE_CURRENT_BINARY_DIR}"
     )
 
-#declare target compilation options
+#declare common target compilation options
 target_compile_options(rlottie
                     PUBLIC
                     PRIVATE
@@ -56,13 +55,23 @@ target_compile_options(rlottie
                         -fno-asynchronous-unwind-tables
                         -fno-rtti
                         -Wall
-                        -Werror
-                        -Wextra
-                        -Wnon-virtual-dtor
-                        -Woverloaded-virtual
-                        -Wno-unused-parameter
                         -fvisibility=hidden
                     )
+
+#MSVC does not recognize these parameters
+if (NOT WIN32)
+    target_compile_options(rlottie
+                        PUBLIC
+                        PRIVATE
+                            -Wnon-virtual-dtor
+                            -Woverloaded-virtual
+                            -Wno-unused-parameter
+                        )
+endif()
+
+if (WIN32 AND NOT BUILD_SHARED_LIBS)
+    target_compile_definitions(rlottie PUBLIC -DRLOTTIE_BUILD=0)
+endif()
 
 #declare dependancy
 set( CMAKE_THREAD_PREFER_PTHREAD TRUE )
